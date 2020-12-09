@@ -57,7 +57,7 @@
 		<text value="USB > BT Keyboard" />
 	</attribute>
     <attribute id="0x0102">                         <!-- Provider Name -->
-		<text value="SySS GmbH" />
+		<text value="AIFUZZ" />
 	</attribute>
     <attribute id="0x0200">                         <!-- HID Device Release Number -->
 		<uint16 value="0x0100" />

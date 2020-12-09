@@ -134,35 +134,35 @@ KEY_F10                 = 0x43
 KEY_F11                 = 0x44
 KEY_F12                 = 0x45
 KEY_PRINT_SCREEN        = 0x46
-KEY_SCROLL_LOCK         = 0x47
+KEY_SCROLLLOCK         = 0x47
 KEY_PAUSE               = 0x48
 KEY_INSERT              = 0x49
 KEY_HOME                = 0x4A
-KEY_PAGE_UP             = 0x4B
+KEY_PAGEUP             = 0x4B
 KEY_DELETE              = 0x4C
 KEY_END                 = 0x4D
-KEY_PAGE_DOWN           = 0x4E
-KEY_ARROW_RIGHT         = 0x4F
-KEY_ARROW_LEFT          = 0x50
-KEY_ARROW_DOWN          = 0x51
-KEY_ARROW_UP            = 0x52
-KEY_NUM_LOCK            = 0x53
-KEY_KEYPAD_DIVIDE       = 0x54
-KEY_KEYPAD_MULTIPLY     = 0x55
-KEY_KEYPAD_SUBTRACT     = 0x56
-KEY_KEYPAD_ADD          = 0x57
-KEY_KEYPAD_ENTER        = 0x58
-KEY_KEYPAD_1            = 0x59
-KEY_KEYPAD_2            = 0x5A
-KEY_KEYPAD_3            = 0x5B
-KEY_KEYPAD_4            = 0x5C
-KEY_KEYPAD_5            = 0x5D
-KEY_KEYPAD_6            = 0x5E
-KEY_KEYPAD_7            = 0x5F
-KEY_KEYPAD_8            = 0x60
-KEY_KEYPAD_9            = 0x61
-KEY_KEYPAD_0            = 0x62
-KEY_KEYPAD_DECIMAL      = 0x63
+KEY_PAGEDOWN           = 0x4E
+KEY_RIGHT         = 0x4F
+KEY_LEFT          = 0x50
+KEY_DOWN          = 0x51
+KEY_UP            = 0x52
+KEY_NUMLOCK            = 0x53
+KEY_KPSLASH       = 0x54
+KEY_KPASTERISK     = 0x55
+KEY_KPMINUS       = 0x56
+KEY_KPPLUS          = 0x57
+KEY_KPENTER        = 0x58
+KEY_KP1            = 0x59
+KEY_KP2            = 0x5A
+KEY_KP3            = 0x5B
+KEY_KP4            = 0x5C
+KEY_KP5            = 0x5D
+KEY_KP6            = 0x5E
+KEY_KP7            = 0x5F
+KEY_KP8            = 0x60
+KEY_KP9            = 0x61
+KEY_KP0            = 0x62
+KEY_KPDOT          = 0x63
 KEY_EUROPE_2            = 0x64
 KEY_APPLICATION         = 0x65
 KEY_POWER               = 0x66
@@ -178,12 +178,12 @@ KEY_CONTROL_RIGHT       = 0xE4
 KEY_SHIFT_RIGHT         = 0xE5
 KEY_ALT_RIGHT           = 0xE6
 KEY_GUI_RIGHT           = 0xE7
+KEY_SYSRQ               = 0xE7
 
-
-class Keyboard():
+class Keyboard:
     """Emulated keyboard"""
 
-    def __init__(self):
+    def __init__(self, service):
         # state structure of the emulated Bluetooth keyboard
         self.state = [
             0xA1,       # input report
@@ -197,15 +197,9 @@ class Keyboard():
             0x00,
             0x00]
 
+        self.service = service
         self.pressed_key_count = 0              # initialize keypress counter
         self.mode = INTERACTIVE_MODE            # interactive mode is default
-
-        # initialize D-Bus client
-        print("[*] Initialize D-Bus keyboard client")
-        self.bus = dbus.SystemBus()
-        self.btkservice = self.bus.get_object("de.syss.btkbdservice",
-                                              "/de/syss/btkbdservice")
-        self.iface = dbus.Interface(self.btkservice, "de.syss.btkbdservice")
 
     def change_state(self, keydata, keypress=True):
         """Change keyboard state"""
@@ -268,7 +262,7 @@ class Keyboard():
         """Forward keyboard events to the D-Bus service"""
 
         modifier_byte = self.state[2]
-        self.iface.send_keys(modifier_byte, self.state[4:10])
+        self.service.send_keys(modifier_byte, self.state[4:10])
 
     def on_press(self, k):
         """Change keyboard state on key presses"""
@@ -282,10 +276,10 @@ class Keyboard():
         # change keyboard state
         self.change_state(k, False)
 
-    def event_loop(self):
+    def event_loop(self, path):
         """Collect events until released"""
 
-        dev = evdev.InputDevice(sys.argv[1])
+        dev = evdev.InputDevice(path)
         print(dev.capabilities(verbose=True))
         for event in dev.read_loop():
             if event.type == ecodes.EV_KEY:
@@ -322,9 +316,12 @@ def key_from_event(k):
     if v:
         return [v, KEY_NONE]
     else:
-        v = globals()[k]
-        return [MODIFIER_NONE, v]
-
+        try:
+            v = globals()[k]
+            return [MODIFIER_NONE, v]
+        except KeyError as e:
+            print("*** Missing", e)
+            return [MODIFIER_NONE, KEY_NONE]
 
 # main
 if __name__ == "__main__":

@@ -39,7 +39,7 @@
 __version__ = '1.0'
 __author__ = 'Matthias Deeg'
 
-
+from pathlib import Path
 import configparser
 import dbus
 import dbus.service
@@ -52,13 +52,100 @@ import sys
 import time
 
 from bluetooth import BluetoothSocket, L2CAP
-from dbus.mainloop.glib import DBusGMainLoop
 from struct import pack
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from .agent import Agent
 
 # sleep time after Bluetooth command line tools
 OS_CMD_SLEEP = 1.5
+BUS_NAME = 'org.bluez'
+AGENT_INTERFACE = 'org.bluez.Agent1'
+AGENT_PATH = "/test/agent"
+
+
+def ask(prompt):
+    try:
+        return raw_input(prompt)
+    except:
+        return input(prompt)
+
+
+class Rejected(dbus.DBusException):
+    _dbus_error_name = "org.bluez.Error.Rejected"
+
+
+def set_trusted(path):
+    print('set_trusted', path)
+    bus = dbus.SystemBus()
+    # bus = self.device.bus
+    props = dbus.Interface(bus.get_object("org.bluez", path),
+            "org.freedesktop.DBus.Properties")
+    props.Set("org.bluez.Device1", "Trusted", True)
+    print('trusted')
+
+
+class Agent(dbus.service.Object):
+    def __init__(self, bus, path, device=None):
+        dbus.service.Object.__init__(self, bus, path)
+        self.device = device
+
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="", out_signature="")
+    def Release(self):
+        print("Release")
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="os", out_signature="")
+    def AuthorizeService(self, device, uuid):
+        print("AuthorizeService ({}, {})".format(device, uuid))
+        authorize = ask("Authorize connection (yes/no): ")
+        if (authorize == "yes"):
+            return
+        raise Rejected("Connection rejected by user")
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="s")
+    def RequestPinCode(self, device):
+        print("RequestPinCode ({})".format(device))
+        set_trusted(device)
+        return ask("Enter PIN Code: ")
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="u")
+    def RequestPasskey(self, device):
+        print("RequestPasskey ({})".format(device))
+        set_trusted(device)
+        passkey = ask("Enter passkey: ")
+        return dbus.UInt32(passkey)
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="ouq", out_signature="")
+    def DisplayPasskey(self, device, passkey, entered):
+        print("DisplayPasskey ({}, {:06u} entered {:u})".
+              format(device, passkey, entered))
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="os", out_signature="")
+    def DisplayPinCode(self, device, pincode):
+        print("DisplayPinCode ({}, {})".format(device, pincode))
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="ou", out_signature="")
+    def RequestConfirmation(self, path, passkey):
+        print("RequestConfirmation ({}, {:06d})".format(path, passkey))
+        set_trusted(path)
+        # confirm = ask("Confirm passkey (yes/no): ")
+        # if (confirm == "yes"):
+            # set_trusted(path)
+            # return
+        # raise Rejected("Passkey doesn't match")
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="")
+    def RequestAuthorization(self, device):
+        print("RequestAuthorization ({})".format(device))
+        auth = ask("Authorize? (yes/no): ")
+        if (auth == "yes"):
+            return
+        raise Rejected("Pairing rejected")
+
+    @dbus.service.method(AGENT_INTERFACE, in_signature="", out_signature="")
+    def Cancel(self):
+        print("Cancel")
+
+
 
 
 class BTKbdBluezProfile(dbus.service.Object):
@@ -111,138 +198,34 @@ class BTKbDevice():
     PROFILE_DBUS_PATH = "/bluez/syss/btkbd_profile"
 
     # file path of the SDP record
-    SDP_RECORD_PATH = "{}{}".format(sys.path[0], "/sdp_record.xml")
+    filename = 'sdp2.xml'
+    # SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), "sdp_record.xml")
+    SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), filename)
+    print(SDP_RECORD_PATH)
 
     # device UUID
     UUID = "00001124-0000-1000-8000-00805f9b34fb"
 
-    def __init__(self):
+    def __init__(self, addr):
         """Initialize Bluetooth keyboard device"""
 
-        # read config file with address and device name
-        print("[*] Read configuration file")
-        config = configparser.ConfigParser()
-        config.read("../keyboard.conf")
-
-        try:
-            self.bdaddr = config['default']['BluetoothAddress']
-            self.device_name = config['default']['DeviceName']
-            self.device_short_name = config['default']['DeviceShortName']
-            self.interface = config['default']['Interface']
-            self.spoofing_method = config['default']['SpoofingMethod']
-            self.auto_connect = config['auto_connect']['AutoConnect']
-            self.connect_target = config['auto_connect']['Target']
-        except KeyError:
-            sys.exit("[-] Could not read all required configuration values")
+        self.auto_connect = False
+        self.bdaddr = addr
+        self.bus = dbus.SystemBus()
 
         print("[*] Initialize Bluetooth device")
-        #self.configure_device()
         self.register_bluez_profile()
+        self.register_agent()
 
-    def configure_device(self):
-        """Configure bluetooth hardware device"""
-
-        print("[*] Configuring emulated Bluetooth keyboard")
-
-        # power on Bluetooth device
-        p = subprocess.run(['btmgmt', '--index', self.interface, 'power',
-                           'off'], stdout=subprocess.PIPE)
-        time.sleep(OS_CMD_SLEEP)
-
-        # spoof device address if configured
-        if self.spoofing_method == 'bdaddr':
-            print("[+] Spoof device {} address {} via btmgmt".
-                  format(self.interface, self.bdaddr))
-
-            # power on Bluetooth device
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'power',
-                               'on'], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set Bluetooth address using bdaddr software tool with manual
-            # reset, so that we have to power on the device
-            p = subprocess.run(['bdaddr', '-i', self.interface, '-r',
-                               self.bdaddr], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-            # power on Bluetooth device
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'power',
-                               'on'], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set device class
-            print("[+] Set device class")
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'class',
-                               '5', '64'], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set device name and short name
-            print("[+] Set device name: {} ({})".
-                  format(self.device_name, self.device_short_name))
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'name',
-                               self.device_name, self.device_short_name],
-                               stdout=subprocess.PIPE)
-
-            # set device to connectable
-            p = subprocess.run(['btmgmt', '--index', self.interface,
-                               'connectable', 'on'], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-            # power on Bluetooth device
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'power',
-                               'on'], stdout=subprocess.PIPE)
-            time.sleep(OS_CMD_SLEEP)
-
-        elif self.spoofing_method == 'btmgmt':
-            print("[+] Spoof device {} address {} via btmgmt".
-                  format(self.interface, self.bdaddr))
-
-            # set Bluetooth address
-            print("[+] Set Bluetooth address: {}".format(self.bdaddr))
-            p = subprocess.run(['btmgmt', '--index', self.interface,
-                               'public-addr', self.bdaddr],
-                               stdout=subprocess.PIPE)
-
-            print(p.stdout)
-            if "fail" in str(p.stdout, "utf-8"):
-                print("[-] Error setting Bluetooth address")
-                sys.exit(1)
-
-            # power on Bluetooth device using btmgmt software tool
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'power',
-                               'on'], stdout=subprocess.PIPE)
-            # print(p.stdout)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set device class
-            print("[+] Set device class")
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'class',
-                               '5', '64'], stdout=subprocess.PIPE)
-            # print(p.stdout)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set device name and short name
-            print("[+] Set device name: {} ({})".
-                  format(self.device_name, self.device_short_name))
-
-            p = subprocess.run(['btmgmt', '--index', self.interface, 'name',
-                               self.device_name, self.device_short_name],
-                               stdout=subprocess.PIPE)
-            # print(p.stdout)
-            time.sleep(OS_CMD_SLEEP)
-
-            # set device to connectable
-            p = subprocess.run(['btmgmt', '--index', self.interface,
-                               'connectable', 'on'], stdout=subprocess.PIPE)
-            # print(p.stdout)
-
-            time.sleep(OS_CMD_SLEEP)
-
-        # turn on discoverable mode
-        print("[+] Turn on discoverable mode")
-        p = subprocess.run(['bluetoothctl', 'discoverable', 'on'],
-                           stdout=subprocess.PIPE)
-        # print(p.stdout)
+    def register_agent(self):
+        capability = "KeyboardDisplay"
+        path = "/test/agent"
+        agent = Agent(self.bus, path, device=self)
+        obj = self.bus.get_object(BUS_NAME, "/org/bluez")
+        manager = dbus.Interface(obj, "org.bluez.AgentManager1")
+        manager.RegisterAgent(path, capability)
+        manager.RequestDefaultAgent(path)
+        print("[*] Agent registered")
 
     def register_bluez_profile(self):
         """Setup and register BlueZ profile"""
@@ -253,10 +236,11 @@ class BTKbDevice():
         service_record = self.read_sdp_service_record()
 
         opts = {
+                "AutoConnect": True,
                 "ServiceRecord": service_record,
-                "Role": "server",
-                "RequireAuthentication": False,
-                "RequireAuthorization": False
+                # "Role": "server",
+                # "RequireAuthentication": False,
+                # "RequireAuthorization": False
                 }
 
         # retrieve a proxy for the bluez profile interface
@@ -285,7 +269,7 @@ class BTKbDevice():
     def listen(self):
         """Listen for incoming client connections"""
 
-        print("[*] Waiting for connections")
+        print("[*] Waiting for connections on", self.bdaddr)
         self.scontrol = BluetoothSocket(L2CAP)
         self.sinterrupt = BluetoothSocket(L2CAP)
 
@@ -322,36 +306,37 @@ class BTKbDevice():
     def send_string(self, message):
         """Send a string to the host machine"""
 
-        self.cinterrupt.send(message)
+        try:
+            self.cinterrupt.send(message)
+        except:
+            import traceback
+            traceback.print_exc()
 
 
-class BTKbdService(dbus.service.Object):
+class BTKbdService:
     """D-Bus service for emulated Bluetooth keyboard"""
 
-    def __init__(self):
+    def __init__(self, addr):
         print("[*] Inititalize D-Bus Bluetooth keyboard service")
 
-        # set up as a D-Bus service
-        bus_name = dbus.service.BusName("de.syss.btkbdservice",
-                                        bus=dbus.SystemBus())
-        dbus.service.Object.__init__(self, bus_name, "/de/syss/btkbdservice")
-
         # create and setup our device
-        self.device = BTKbDevice()
+        self.device = BTKbDevice(addr)
 
-        if self.device.auto_connect == "true":
-            # Switch into paring mode or connect to already known target?
-            # files = os.listdir('/var/lib/bluetooth/{}'.format(self.device.bdaddr))
-            # mac_regex = re.compile(r'([0-9A-F]{2}:){5}([0-9A-F]{2})')
-            # files = list(filter(mac_regex.match, files))
-            # if files:
-            # connect to configured target
-            self.device.connect(self.device.connect_target)
-        else:
-            # start listening for new connections
-            self.device.listen()
+    def listen(self):
+        self.device.listen()
 
-    @dbus.service.method('de.syss.btkbdservice', in_signature='yay')
+        # if self.device.auto_connect == "true":
+            # # Switch into paring mode or connect to already known target?
+            # # files = os.listdir('/var/lib/bluetooth/{}'.format(self.device.bdaddr))
+            # # mac_regex = re.compile(r'([0-9A-F]{2}:){5}([0-9A-F]{2})')
+            # # files = list(filter(mac_regex.match, files))
+            # # if files:
+            # # connect to configured target
+            # self.device.connect(self.device.connect_target)
+        # else:
+            # # start listening for new connections
+            # self.device.listen()
+
     def send_keys(self, modifiers, keys):
         """Send keys"""
 
@@ -371,13 +356,3 @@ class BTKbdService(dbus.service.Object):
         self.device.send_string(data)
 
 
-# main routine
-if __name__ == "__main__":
-    # check for required root privileges
-    if not os.geteuid() == 0:
-        sys.exit("[-] Please run the keyboard server as root")
-
-    # start D-Bus Bluetooth keyboard emulator service
-    DBusGMainLoop(set_as_default=True)
-    btkbdservice = BTKbdService()
-    Gtk.main()
