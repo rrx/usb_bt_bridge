@@ -93,7 +93,10 @@ class Agent(dbus.service.Object):
     @dbus.service.method(AGENT_INTERFACE, in_signature="ou", out_signature="")
     def RequestConfirmation(self, device, passkey):
         print("RequestConfirmation ({}, {:06d}".format(device, passkey))
-        confirm = ask("Confirm passkey (yes/no): ")
+        # confirm = ask("Confirm passkey (yes/no): ")
+        set_trusted(device)
+        return
+
         if (confirm == "yes"):
             set_trusted(device)
             return

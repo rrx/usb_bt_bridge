@@ -53,7 +53,7 @@ import time
 
 from bluetooth import BluetoothSocket, L2CAP
 from struct import pack
-from .agent import Agent
+# from .agent import Agent
 
 # sleep time after Bluetooth command line tools
 OS_CMD_SLEEP = 1.5
@@ -127,6 +127,7 @@ class Agent(dbus.service.Object):
     def RequestConfirmation(self, path, passkey):
         print("RequestConfirmation ({}, {:06d})".format(path, passkey))
         set_trusted(path)
+        # TODO: implement something better here
         # confirm = ask("Confirm passkey (yes/no): ")
         # if (confirm == "yes"):
             # set_trusted(path)

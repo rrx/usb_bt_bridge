@@ -1,0 +1,13 @@
+devices:
+  - name: Shuttle Pro
+    usb: 0b33:0030
+  - name: Foot Pedal
+    usb: 05f3:00ff
+  - name: AKAIPro
+    usb: 09e8:0027
+  - name: Mouse1
+    usb: 046d:c077
+  - name: KBD2
+    usb: 1c4f:0055
+  - name: KBD1
+    usb: 24f0:0140
