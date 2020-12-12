@@ -1,3 +1,4 @@
+import time
 from gi.repository import Gtk
 import gi
 gi.require_version('Gtk', '3.0')
@@ -20,25 +21,31 @@ except ImportError:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(thread)s %(name)s %(message)s')
     print('start')
-    # GObject.threads_init()
-    # dbus.mainloop.glib.threads_init()
-    # Gtk.threads_init()
+
     # check for required root privileges
     if not os.geteuid() == 0:
         sys.exit("[-] Please run the keyboard server as root")
+    mainloop = GObject.MainLoop()
 
     # start D-Bus Bluetooth keyboard emulator service
     DBusGMainLoop(set_as_default=True)
-    btkbdservice = BTKbdService("00:01:02:03:04:06")
+    addr = '14:F6:D8:B5:09:86'
+    # you should probably have addr be empty. so it binds on the default iface
+    addr = ''
+    # addr = "00:01:02:03:04:06"
+    btkbdservice = BTKbdService(addr)
     kbd = Keyboard(btkbdservice)
-    threading.Thread(target=lambda: usbdevices_main(sys.argv[1])).start()
-    threading.Thread(target=lambda: kbd.event_loop('/dev/input/event8')).start()
+
+    config_filename = sys.argv[1]
+    threading.Thread(target=lambda: usbdevices_main(kbd, config_filename)).start()
+    threading.Thread(target=lambda: kbd.event_loop()).start()
     threading.Thread(target=btkbdservice.listen).start()
-    # btkbdservice.listen()
-    # kbd.event_loop('/dev/input/event8')
-    print('loop')
-    mainloop = GObject.MainLoop()
-    mainloop.run()
+    try:
+        print('loop')
+        mainloop.run()
+    except KeyboardInterrupt:
+        print('Interrupt')
+        pass
 
     # b = threading.Thread(target=Gtk.main).start()
     # a.join()

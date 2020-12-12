@@ -53,7 +53,6 @@ import time
 
 from bluetooth import BluetoothSocket, L2CAP
 from struct import pack
-# from .agent import Agent
 
 # sleep time after Bluetooth command line tools
 OS_CMD_SLEEP = 1.5
@@ -127,12 +126,13 @@ class Agent(dbus.service.Object):
     def RequestConfirmation(self, path, passkey):
         print("RequestConfirmation ({}, {:06d})".format(path, passkey))
         set_trusted(path)
+        return
         # TODO: implement something better here
-        # confirm = ask("Confirm passkey (yes/no): ")
-        # if (confirm == "yes"):
-            # set_trusted(path)
-            # return
-        # raise Rejected("Passkey doesn't match")
+        confirm = ask("Confirm passkey (yes/no): ")
+        if (confirm == "yes"):
+            set_trusted(path)
+            return
+        raise Rejected("Passkey doesn't match")
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="")
     def RequestAuthorization(self, device):
@@ -200,6 +200,7 @@ class BTKbDevice():
 
     # file path of the SDP record
     filename = 'sdp2.xml'
+    filename = 'sdp_record.xml'
     # SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), "sdp_record.xml")
     SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), filename)
     print(SDP_RECORD_PATH)
@@ -210,6 +211,7 @@ class BTKbDevice():
     def __init__(self, addr):
         """Initialize Bluetooth keyboard device"""
 
+        self.cinterrupt = None
         self.auto_connect = False
         self.bdaddr = addr
         self.bus = dbus.SystemBus()
@@ -237,11 +239,11 @@ class BTKbDevice():
         service_record = self.read_sdp_service_record()
 
         opts = {
-                "AutoConnect": True,
+                # "AutoConnect": True,
                 "ServiceRecord": service_record,
-                # "Role": "server",
-                # "RequireAuthentication": False,
-                # "RequireAuthorization": False
+                "Role": "server",
+                "RequireAuthentication": False,
+                "RequireAuthorization": False
                 }
 
         # retrieve a proxy for the bluez profile interface
@@ -308,7 +310,10 @@ class BTKbDevice():
         """Send a string to the host machine"""
 
         try:
-            self.cinterrupt.send(message)
+            if self.cinterrupt:
+                self.cinterrupt.send(message)
+            else:
+                print("Not connected")
         except:
             import traceback
             traceback.print_exc()

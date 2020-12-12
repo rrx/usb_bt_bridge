@@ -47,6 +47,8 @@ import dbus.service
 import evdev
 from evdev import InputDevice, ecodes
 from evdev.events import event_factory
+from selectors import DefaultSelector, EVENT_READ
+import selectors
 
 import sys
 
@@ -200,6 +202,27 @@ class Keyboard:
         self.service = service
         self.pressed_key_count = 0              # initialize keypress counter
         self.mode = INTERACTIVE_MODE            # interactive mode is default
+        self.selector = DefaultSelector()
+
+    def device_add(self, args, device):
+        try:
+            dev = InputDevice(device.device_node)
+            # print(dev.capabilities(verbose=True))
+            print(dev.capabilities())
+            # print(dev)
+            self.selector.register(dev, selectors.EVENT_READ)
+        except:# RuntimeException as e:
+            import traceback
+            traceback.print_exc()
+
+    def device_remove(self, args, device):
+        try:
+            dev = InputDevice(device.device_node)
+            # print(dev)
+            self.selector.unregister(dev)
+        except:
+            import traceback
+            traceback.print_exc()
 
     def change_state(self, keydata, keypress=True):
         """Change keyboard state"""
@@ -276,24 +299,25 @@ class Keyboard:
         # change keyboard state
         self.change_state(k, False)
 
-    def event_loop(self, path):
-        """Collect events until released"""
+    def event_loop(self):
+        try:
+            while True:
+                for key, mask in self.selector.select():
+                    device = key.fileobj
+                    for event in device.read():
+                        if event.type == ecodes.EV_KEY:
+                            print('E', event.type, event.value, event.code)
+                            print('E', evdev.util.categorize(event))
+                            e = evdev.events.KeyEvent(event)
+                            print(e.scancode, e.keystate, e.keycode)
 
-        dev = evdev.InputDevice(path)
-        print(dev.capabilities(verbose=True))
-        for event in dev.read_loop():
-            if event.type == ecodes.EV_KEY:
-                print('E', event.type, event.value, event.code)
-                print('E', evdev.util.categorize(event))
-                e = evdev.events.KeyEvent(event)
-                print(e.scancode, e.keystate, e.keycode)
-
-                key = key_from_event(e.keycode)
-                if event.value == 0:
-                    self.on_release(key)
-                elif event.value == 1:
-                    self.on_press(key)
-
+                            key = key_from_event(e.keycode)
+                            if event.value == 0:
+                                self.on_release(key)
+                            elif event.value == 1:
+                                self.on_press(key)
+        except KeyboardInterrupt:
+            pass
 
     def __str__(self):
         """Keyboard state as string"""
