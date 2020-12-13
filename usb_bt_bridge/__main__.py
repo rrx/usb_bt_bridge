@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # start D-Bus Bluetooth keyboard emulator service
     DBusGMainLoop(set_as_default=True)
-    addr = '14:F6:D8:B5:09:86'
+    # addr = '14:F6:D8:B5:09:86'
     # you should probably have addr be empty. so it binds on the default iface
     addr = ''
     # addr = "00:01:02:03:04:06"
@@ -37,15 +37,25 @@ if __name__ == "__main__":
     kbd = Keyboard(btkbdservice)
 
     config_filename = sys.argv[1]
-    threading.Thread(target=lambda: usbdevices_main(kbd, config_filename)).start()
-    threading.Thread(target=lambda: kbd.event_loop()).start()
-    threading.Thread(target=btkbdservice.listen).start()
-    try:
-        print('loop')
-        mainloop.run()
-    except KeyboardInterrupt:
-        print('Interrupt')
-        pass
+    ts = [
+        threading.Thread(target=lambda: usbdevices_main(kbd, config_filename)),
+        threading.Thread(target=lambda: kbd.event_loop()),
+        threading.Thread(target=btkbdservice.listen),
+        threading.Thread(target=mainloop.run)
+    ]
+
+    # start threads
+    [t.start() for t in ts]
+
+    # join threads
+    # [t.join() for t in ts]
+
+    # try:
+        # print('loop')
+        # mainloop.run()
+    # except KeyboardInterrupt:
+        # print('Interrupt')
+        # pass
 
     # b = threading.Thread(target=Gtk.main).start()
     # a.join()

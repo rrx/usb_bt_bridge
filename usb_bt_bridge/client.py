@@ -1,49 +1,14 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+https://source.android.com/devices/input/keyboard-devices.html
+https://www.usb.org/sites/default/files/documents/hut1_12v2.pdf
+https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2
 
 """
-  Bluetooth Keyboard Emulator D-Bus Client
-
-  by Matthias Deeg <matthias.deeg@syss.de>, SySS GmbH
-
-  based on BlueZ 5 Bluetooth Keyboard Emulator for Raspberry Pi
-  (YAPTB Bluetooth keyboard emulator) by Thanh Le
-  Source code and information of this project can be found via
-  https://github.com/0xmemphre/BL_keyboard_RPI,
-  http://www.mlabviet.com/2017/09/make-raspberry-pi3-as-emulator.html
-
-  MIT License
-
-  Copyright (c) 2018 SySS GmbH
-  Copyright (c) 2017 quangthanh010290
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in
-  all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-"""
-
-__version__ = '0.8'
-__author__ = 'Matthias Deeg'
-
 
 import dbus
 import dbus.service
-
-#from pynput import keyboard
+from .constants import KEY_RECORDS
 import evdev
 from evdev import InputDevice, ecodes
 from evdev.events import event_factory
@@ -51,6 +16,8 @@ from selectors import DefaultSelector, EVENT_READ
 import selectors
 
 import sys
+
+LOOKUP = dict([(key, code) for key, code, _ in KEY_RECORDS] + [(code, key) for key, code, _ in KEY_RECORDS])
 
 # operating modes
 NON_INTERACTIVE_MODE = 0
@@ -264,6 +231,10 @@ class Keyboard:
                 self.state[2] |= keydata[0]
                 print("Modify modifier byte {}".format(self.state[2]))
 
+            elif keydata[2] != 0:
+                self.service.send_mouse(keydata[2], 0, 0, 0)
+                return
+
         else:
             if keydata[1] != KEY_NONE:
                 # decrease keypress count
@@ -278,12 +249,12 @@ class Keyboard:
                 print("{} released".format(keydata[0]))
                 self.state[2] &= ~keydata[0]
 
-        print(self)
-        self.send_input()
+            elif keydata[2] != 0:
+                self.service.send_mouse(0, 0, 0, 0)
+                return
 
-    def send_input(self):
-        """Forward keyboard events to the D-Bus service"""
 
+        # print(self)
         modifier_byte = self.state[2]
         self.service.send_keys(modifier_byte, self.state[4:10])
 
@@ -299,6 +270,9 @@ class Keyboard:
         # change keyboard state
         self.change_state(k, False)
 
+    def on_move(self, x, y, w):
+        self.service.send_mouse(0, x, y, w)
+
     def event_loop(self):
         try:
             while True:
@@ -306,16 +280,30 @@ class Keyboard:
                     device = key.fileobj
                     for event in device.read():
                         if event.type == ecodes.EV_KEY:
-                            print('E', event.type, event.value, event.code)
-                            print('E', evdev.util.categorize(event))
-                            e = evdev.events.KeyEvent(event)
-                            print(e.scancode, e.keystate, e.keycode)
+                            print('E', event.type, event.value, event.code, "0x%02x" % event.code)
+                            ce = evdev.util.categorize(event)
+                            print(ce.scancode, ce.keystate, ce.keycode)
 
-                            key = key_from_event(e.keycode)
+                            key = key_from_event(ce)
                             if event.value == 0:
                                 self.on_release(key)
                             elif event.value == 1:
                                 self.on_press(key)
+                        elif event.type == ecodes.EV_REL:
+                            print('E', event.type, event.value, event.code, "0x%02x" % event.code)
+                            if event.code == 0:
+                                # rel_x
+                                self.on_move(event.value, 0, 0)
+                            elif event.code == 1:
+                                # rel_y
+                                self.on_move(0,event.value,0)
+                            elif event.code == 8:
+                                # vwheel
+                                self.on_move(0,0,event.value)
+
+                        else:
+                            print("X", event)
+
         except KeyboardInterrupt:
             pass
 
@@ -335,17 +323,35 @@ mapping = {
     'KEY_RIGHTMETA': MODIFIER_GUI_RIGHT,
 }
 
-def key_from_event(k):
-    v = mapping.get(k)
+mouse_mapping = {
+    'BTN_LEFT': 1,
+    'BTN_MIDDLE': 2,
+    'BTN_RIGHT': 4,
+    272: 1,
+    273: 2,
+    274: 4
+}
+
+def key_from_event(e):
+    k = e.keycode
+
+    if isinstance(k, list):
+        k = k[0]
+
+    if k in mapping:
+        return [LOOKUP[k], KEY_NONE, 0]
+
+    v = LOOKUP.get(k)
     if v:
-        return [v, KEY_NONE]
-    else:
-        try:
-            v = globals()[k]
-            return [MODIFIER_NONE, v]
-        except KeyError as e:
-            print("*** Missing", e)
-            return [MODIFIER_NONE, KEY_NONE]
+        print('lookup', k, v)
+        return [MODIFIER_NONE, v, 0]
+
+    v = mouse_mapping.get(k)
+    if v:
+        return [MODIFIER_NONE, KEY_NONE, v]
+
+    print("*** Missing", e)
+    return [MODIFIER_NONE, KEY_NONE, 0]
 
 # main
 if __name__ == "__main__":

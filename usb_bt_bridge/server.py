@@ -53,6 +53,7 @@ import time
 
 from bluetooth import BluetoothSocket, L2CAP
 from struct import pack
+from .constants import KEYBOARD_DESCRIPTOR, MOUSE_DESCRIPTOR, DESCRIPTOR
 
 # sleep time after Bluetooth command line tools
 OS_CMD_SLEEP = 1.5
@@ -86,7 +87,6 @@ class Agent(dbus.service.Object):
     def __init__(self, bus, path, device=None):
         dbus.service.Object.__init__(self, bus, path)
         self.device = device
-
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="", out_signature="")
     def Release(self):
@@ -160,7 +160,7 @@ class BTKbdBluezProfile(dbus.service.Object):
                          out_signature="")
     def Release(self):
         print("[*] Release")
-        dbus.mainloop.quit()
+        # dbus.mainloop.quit()
 
     @dbus.service.method("org.bluez.Profile1",
                          in_signature="", out_signature="")
@@ -196,11 +196,12 @@ class BTKbDevice():
     P_INTR = 19                     # Service port (interrupt) from SDP record
 
     # D-Bus path of the BlueZ profile
-    PROFILE_DBUS_PATH = "/bluez/syss/btkbd_profile"
+    PROFILE_DBUS_PATH = "/bluez/rrx/btkbd_profile"
 
     # file path of the SDP record
-    filename = 'sdp2.xml'
+    # filename = 'sdp2.xml'
     filename = 'sdp_record.xml'
+    filename = 'sdp3.xml'
     # SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), "sdp_record.xml")
     SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), filename)
     print(SDP_RECORD_PATH)
@@ -237,10 +238,12 @@ class BTKbDevice():
 
         # setup profile options
         service_record = self.read_sdp_service_record()
-
+        descriptor = DESCRIPTOR
+        descriptor = "".join(["%02X" % x for x in descriptor])
+        print(descriptor)
         opts = {
-                # "AutoConnect": True,
-                "ServiceRecord": service_record,
+                "AutoConnect": True,
+                "ServiceRecord": service_record.replace("SERVICE_DESCRIPTOR", descriptor),
                 "Role": "server",
                 "RequireAuthentication": False,
                 "RequireAuthorization": False
@@ -292,6 +295,8 @@ class BTKbDevice():
         print("[*] Connection on the interrupt channel from {}"
               .format(cinfo[0]))
 
+        print("Listen exit")
+
     def connect(self, target):
         """Connect to target MAC (the keyboard must already be known to the
         target)"""
@@ -329,7 +334,11 @@ class BTKbdService:
         self.device = BTKbDevice(addr)
 
     def listen(self):
-        self.device.listen()
+        try:
+            while True:
+                self.device.listen()
+        except KeyboardInterrupt:
+            print("Interrupt")
 
         # if self.device.auto_connect == "true":
             # # Switch into paring mode or connect to already known target?
@@ -342,6 +351,12 @@ class BTKbdService:
         # else:
             # # start listening for new connections
             # self.device.listen()
+
+    def send_mouse(self, buttons, x, y, w):
+        byte_list = [0xA1, 0x02, buttons & 0x1f, x, y, w]
+        print('send', byte_list)
+        data = pack("3B3b", *byte_list)
+        self.device.send_string(data)
 
     def send_keys(self, modifiers, keys):
         """Send keys"""
@@ -356,6 +371,8 @@ class BTKbdService:
             padding = len(byte_list) - 10
             for i in range(padding):
                 byte_list.append(0)
+
+        print('send', byte_list)
 
         data = pack("10B", *byte_list)
 
