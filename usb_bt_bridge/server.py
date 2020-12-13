@@ -60,7 +60,31 @@ OS_CMD_SLEEP = 1.5
 BUS_NAME = 'org.bluez'
 AGENT_INTERFACE = 'org.bluez.Agent1'
 AGENT_PATH = "/test/agent"
+DBUS_OM_IFACE = "org.freedesktop.DBus.ObjectManager"
+DBUS_PROP_IFACE = "org.freedesktop.DBus.Properties"
 
+GATT_SERVICE_IFACE = "org.bluez.GattService1"
+GATT_CHRC_IFACE = "org.bluez.GattCharacteristic1"
+GATT_DESC_IFACE = "org.bluez.GattDescriptor1"
+
+LE_ADVERTISING_MANAGER_IFACE = "org.bluez.LEAdvertisingManager1"
+LE_ADVERTISEMENT_IFACE = "org.bluez.LEAdvertisement1"
+
+BLUEZ_SERVICE_NAME = "org.bluez"
+GATT_MANAGER_IFACE = "org.bluez.GattManager1"
+
+def find_adapter(bus):
+    """
+    Returns the first object that the bluez service has that has a GattManager1 interface
+    """
+    remote_om = dbus.Interface(bus.get_object(BLUEZ_SERVICE_NAME, "/"), DBUS_OM_IFACE)
+    objects = remote_om.GetManagedObjects()
+
+    for o, props in objects.items():
+        if GATT_MANAGER_IFACE in props.keys():
+            return o
+
+    return None
 
 def ask(prompt):
     try:
@@ -125,8 +149,8 @@ class Agent(dbus.service.Object):
     @dbus.service.method(AGENT_INTERFACE, in_signature="ou", out_signature="")
     def RequestConfirmation(self, path, passkey):
         print("RequestConfirmation ({}, {:06d})".format(path, passkey))
-        set_trusted(path)
-        return
+        # set_trusted(path)
+        # return
         # TODO: implement something better here
         confirm = ask("Confirm passkey (yes/no): ")
         if (confirm == "yes"):
@@ -196,15 +220,8 @@ class BTKbDevice():
     P_INTR = 19                     # Service port (interrupt) from SDP record
 
     # D-Bus path of the BlueZ profile
-    PROFILE_DBUS_PATH = "/bluez/rrx/btkbd_profile"
+    PROFILE_DBUS_PATH = "/bluez/syss/btkbd_profile"
 
-    # file path of the SDP record
-    # filename = 'sdp2.xml'
-    filename = 'sdp_record.xml'
-    filename = 'sdp3.xml'
-    # SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), "sdp_record.xml")
-    SDP_RECORD_PATH = os.path.join(Path(__file__).parent.absolute(), filename)
-    print(SDP_RECORD_PATH)
 
     # device UUID
     UUID = "00001124-0000-1000-8000-00805f9b34fb"
@@ -220,6 +237,7 @@ class BTKbDevice():
         print("[*] Initialize Bluetooth device")
         self.register_bluez_profile()
         self.register_agent()
+        self.power_on()
 
     def register_agent(self):
         capability = "KeyboardDisplay"
@@ -235,14 +253,19 @@ class BTKbDevice():
         """Setup and register BlueZ profile"""
 
         print("Configuring Bluez Profile")
+        # file path of the SDP record
+        filename = 'sdp2.xml'
+        # filename = 'sdp_record.xml'
+        filename = 'sdp3.xml'
+        path = os.path.join(Path(__file__).parent.absolute(), filename)
 
         # setup profile options
-        service_record = self.read_sdp_service_record()
+        service_record = self.read_sdp_service_record(path)
         descriptor = DESCRIPTOR
         descriptor = "".join(["%02X" % x for x in descriptor])
         print(descriptor)
         opts = {
-                "AutoConnect": True,
+                # "AutoConnect": True,
                 "ServiceRecord": service_record.replace("SERVICE_DESCRIPTOR", descriptor),
                 "Role": "server",
                 "RequireAuthentication": False,
@@ -261,12 +284,20 @@ class BTKbDevice():
 
         print("[*] Profile registered")
 
-    def read_sdp_service_record(self):
+    def power_on(self):
+        bus = dbus.SystemBus()
+        adapter = find_adapter(bus)
+        print(adapter)
+        adapter_obj = bus.get_object(BUS_NAME, adapter)
+        adapter_props = dbus.Interface(adapter_obj, "org.freedesktop.DBus.Properties")
+        adapter_props.Set("org.bluez.Adapter1", "Powered", dbus.Boolean(1))
+
+    def read_sdp_service_record(self, path):
         """Read SDP service record"""
 
         print("[*] Reading service record")
         try:
-            fh = open(BTKbDevice.SDP_RECORD_PATH, "r")
+            fh = open(path, "r")
         except Exception:
             sys.exit("[*] Could not open the SDP record. Exiting ...")
 

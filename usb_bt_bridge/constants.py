@@ -275,11 +275,11 @@ DESCRIPTOR = [
     0xa1, 0x00,                    #  Collection (Physical)              60
     0x05, 0x09,                    #   Usage Page (Button)               62
     0x19, 0x01,                    #   Usage Minimum (1)                 64
-    0x29, 0x05,                    #   Usage Maximum (5)                 66
+    0x29, 0x03,                    #   Usage Maximum (3)                 66
     0x15, 0x00,                    #   Logical Minimum (0)               68
     0x25, 0x01,                    #   Logical Maximum (1)               70
     0x75, 0x01,                    #   Report Size (1)                   72
-    0x95, 0x05,                    #   Report Count (5)                  74
+    0x95, 0x03,                    #   Report Count (3)                  74
     0x81, 0x02,                    #   Input (Data,Var,Abs)              76
     0x75, 0x05,                    #   Report Size (5)                   78
     0x95, 0x01,                    #   Report Count (1)                  80
