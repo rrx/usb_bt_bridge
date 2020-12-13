@@ -240,7 +240,7 @@ MOUSE_DESCRIPTOR = [
     0xc0,                          # End Collection                      45
     ]
 
-DESCRIPTOR = [
+DESCRIPTOR_1 = [
     0x05, 0x01,                    # Usage Page (Generic Desktop)        0
     0x09, 0x06,                    # Usage (Keyboard)                    2
     0xa1, 0x01,                    # Collection (Application)            4
@@ -296,3 +296,225 @@ DESCRIPTOR = [
     0xc0,                          #  End Collection                     102
     0xc0,                          # End Collection                      103
 ]
+
+DESCRIPTOR_2 = [
+    0x05, 0x01,                    # Usage Page (Generic Desktop)        0
+    0x09, 0x06,                    # Usage (Keyboard)                    2
+    0xa1, 0x01,                    # Collection (Application)            4
+    0x85, 0x01,                    #  Report ID (1)                      6
+    0x75, 0x01,                    #  Report Size (1)                    8
+    0x95, 0x08,                    #  Report Count (8)                   10
+    0x05, 0x07,                    #  Usage Page (Keyboard)              12
+    0x19, 0xe0,                    #  Usage Minimum (224)                14
+    0x29, 0xe7,                    #  Usage Maximum (231)                16
+    0x15, 0x00,                    #  Logical Minimum (0)                18
+    0x25, 0x01,                    #  Logical Maximum (1)                20
+    0x81, 0x02,                    #  Input (Data,Var,Abs)               22
+    0x95, 0x01,                    #  Report Count (1)                   24
+    0x75, 0x08,                    #  Report Size (8)                    26
+    0x81, 0x03,                    #  Input (Cnst,Var,Abs)               28
+    0x95, 0x05,                    #  Report Count (5)                   30
+    0x75, 0x01,                    #  Report Size (1)                    32
+    0x05, 0x08,                    #  Usage Page (LEDs)                  34
+    0x19, 0x01,                    #  Usage Minimum (1)                  36
+    0x29, 0x05,                    #  Usage Maximum (5)                  38
+    0x91, 0x02,                    #  Output (Data,Var,Abs)              40
+    0x95, 0x01,                    #  Report Count (1)                   42
+    0x75, 0x03,                    #  Report Size (3)                    44
+    0x91, 0x03,                    #  Output (Cnst,Var,Abs)              46
+    0x95, 0x06,                    #  Report Count (6)                   48
+    0x75, 0x08,                    #  Report Size (8)                    50
+    0x15, 0x00,                    #  Logical Minimum (0)                52
+    0x26, 0xff, 0x00,              #  Logical Maximum (255)              54
+    0x05, 0x07,                    #  Usage Page (Keyboard)              57
+    0x19, 0x00,                    #  Usage Minimum (0)                  59
+    0x29, 0xff,                    #  Usage Maximum (255)                61
+    0x81, 0x00,                    #  Input (Data,Arr,Abs)               63
+    0xc0,                          # End Collection                      65
+    0x05, 0x0c,                    # Usage Page (Consumer Devices)       66
+    0x09, 0x01,                    # Usage (Consumer Control)            68
+    0xa1, 0x01,                    # Collection (Application)            70
+    0x85, 0x03,                    #  Report ID (3)                      72
+    0x15, 0x00,                    #  Logical Minimum (0)                74
+    0x25, 0x01,                    #  Logical Maximum (1)                76
+    0x75, 0x01,                    #  Report Size (1)                    78
+    0x95, 0x0b,                    #  Report Count (11)                  80
+    0x0a, 0x23, 0x02,              #  Usage (AC Home)                    82
+    0x0a, 0x21, 0x02,              #  Usage (AC Search)                  85
+    0x0a, 0xb1, 0x01,              #  Usage (AL Screen Saver)            88
+    0x09, 0xb8,                    #  Usage (Eject)                      91
+    0x09, 0xb6,                    #  Usage (Scan Previous Track)        93
+    0x09, 0xcd,                    #  Usage (Play/Pause)                 95
+    0x09, 0xb5,                    #  Usage (Scan Next Track)            97
+    0x09, 0xe2,                    #  Usage (Mute)                       99
+    0x09, 0xea,                    #  Usage (Volume Down)                101
+    0x09, 0xe9,                    #  Usage (Volume Up)                  103
+    0x09, 0x30,                    #  Usage (Power)                      105
+    0x81, 0x02,                    #  Input (Data,Var,Abs)               107
+    0x95, 0x01,                    #  Report Count (1)                   109
+    0x75, 0x0d,                    #  Report Size (13)                   111
+    0x81, 0x03,                    #  Input (Cnst,Var,Abs)               11
+    0xc0,                          # End Collection                      115
+]
+
+DESCRIPTOR_3 = [
+    0x05, 0x01,                    # Usage Page (Generic Desktop)        0
+    0x09, 0x06,                    # Usage (Keyboard)                    2
+    0xa1, 0x01,                    # Collection (Application)            4
+    0x85, 0x01,                    #  Report ID (1)                      6
+    0x75, 0x01,                    #  Report Size (1)                    8
+    0x95, 0x08,                    #  Report Count (8)                   10
+    0x05, 0x07,                    #  Usage Page (Keyboard)              12
+    0x19, 0xe0,                    #  Usage Minimum (224)                14
+    0x29, 0xe7,                    #  Usage Maximum (231)                16
+    0x15, 0x00,                    #  Logical Minimum (0)                18
+    0x25, 0x01,                    #  Logical Maximum (1)                20
+    0x81, 0x02,                    #  Input (Data,Var,Abs)               22
+    0x95, 0x01,                    #  Report Count (1)                   24
+    0x75, 0x08,                    #  Report Size (8)                    26
+    0x81, 0x03,                    #  Input (Cnst,Var,Abs)               28
+    # XXX: Disable LEDS
+    # 0x95, 0x05,                    #  Report Count (5)                   30
+    # 0x75, 0x01,                    #  Report Size (1)                    32
+    # 0x05, 0x08,                    #  Usage Page (LEDs)                  34
+    # 0x19, 0x01,                    #  Usage Minimum (1)                  36
+    # 0x29, 0x05,                    #  Usage Maximum (5)                  38
+    # 0x91, 0x02,                    #  Output (Data,Var,Abs)              40
+    # 0x95, 0x01,                    #  Report Count (1)                   42
+    # 0x75, 0x03,                    #  Report Size (3)                    44
+    # 0x91, 0x03,                    #  Output (Cnst,Var,Abs)              46
+    0x95, 0x06,                    #  Report Count (6)                   48
+    0x75, 0x08,                    #  Report Size (8)                    50
+    0x15, 0x00,                    #  Logical Minimum (0)                52
+    0x26, 0xff, 0x00,              #  Logical Maximum (255)              54
+    0x05, 0x07,                    #  Usage Page (Keyboard)              57
+    0x19, 0x00,                    #  Usage Minimum (0)                  59
+    0x29, 0xff,                    #  Usage Maximum (255)                61
+    0x81, 0x00,                    #  Input (Data,Arr,Abs)               63
+    0xc0,                          # End Collection                      65
+    0x05, 0x01,                    # Usage Page (Generic Desktop)        50
+    0x09, 0x02,                    # Usage (Mouse)                       52
+    0xa1, 0x01,                    # Collection (Application)            54
+    0x85, 0x02,                    #  Report ID (2)                      56
+    0x09, 0x01,                    #  Usage (Pointer)                    58
+    0xa1, 0x00,                    #  Collection (Physical)              60
+    0x05, 0x09,                    #   Usage Page (Button)               62
+    0x19, 0x01,                    #   Usage Minimum (1)                 64
+    0x29, 0x03,                    #   Usage Maximum (3)                 66
+    0x15, 0x00,                    #   Logical Minimum (0)               68
+    0x25, 0x01,                    #   Logical Maximum (1)               70
+    0x75, 0x01,                    #   Report Size (1)                   72
+    0x95, 0x03,                    #   Report Count (3)                  74
+    0x81, 0x02,                    #   Input (Data,Var,Abs)              76
+    0x75, 0x05,                    #   Report Size (5)                   78
+    0x95, 0x01,                    #   Report Count (1)                  80
+    0x81, 0x01,                    #   Input (Cnst,Arr,Abs)              82
+    0x05, 0x01,                    #   Usage Page (Generic Desktop)      84
+    0x09, 0x30,                    #   Usage (X)                         86
+    0x09, 0x31,                    #   Usage (Y)                         88
+    0x09, 0x38,                    #   Usage (Wheel)                     90
+    0x15, 0x81,                    #   Logical Minimum (-127)            92
+    0x25, 0x7f,                    #   Logical Maximum (127)             94
+    0x75, 0x08,                    #   Report Size (8)                   96
+    0x95, 0x03,                    #   Report Count (3)                  98
+    0x81, 0x06,                    #   Input (Data,Var,Rel)              100
+    0xc0,                          #  End Collection                     102
+    0xc0,                          # End Collection                      103
+]
+
+DESCRIPTOR_4 = [
+    0x05, 0x01,                    # Usage Page (Generic Desktop)        0
+    0x09, 0x06,                    # Usage (Keyboard)                    2
+    0xa1, 0x01,                    # Collection (Application)            4
+    0x85, 0x01,                    #  Report ID (1)                      6
+    0x05, 0x07,                    #  Usage Page (Keyboard)              8
+    0x19, 0xe0,                    #  Usage Minimum (224)                10
+    0x29, 0xe7,                    #  Usage Maximum (231)                12
+    0x15, 0x00,                    #  Logical Minimum (0)                14
+    0x25, 0x01,                    #  Logical Maximum (1)                16
+    0x75, 0x01,                    #  Report Size (1)                    18
+    0x95, 0x08,                    #  Report Count (8)                   20
+    0x81, 0x02,                    #  Input (Data,Var,Abs)               22
+    0x95, 0x01,                    #  Report Count (1)                   24
+    0x75, 0x08,                    #  Report Size (8)                    26
+    0x81, 0x03,                    #  Input (Cnst,Var,Abs)               28
+    0x95, 0x05,                    #  Report Count (5)                   30
+    0x75, 0x01,                    #  Report Size (1)                    32
+    0x05, 0x08,                    #  Usage Page (LEDs)                  34
+    0x19, 0x01,                    #  Usage Minimum (1)                  36
+    0x29, 0x05,                    #  Usage Maximum (5)                  38
+    0x91, 0x02,                    #  Output (Data,Var,Abs)              40
+    0x95, 0x01,                    #  Report Count (1)                   42
+    0x75, 0x03,                    #  Report Size (3)                    44
+    0x91, 0x03,                    #  Output (Cnst,Var,Abs)              46
+    0x95, 0x06,                    #  Report Count (6)                   48
+    0x75, 0x08,                    #  Report Size (8)                    50
+    0x15, 0x00,                    #  Logical Minimum (0)                52
+    0x25, 0x6d,                    #  Logical Maximum (109)              54
+    0x05, 0x07,                    #  Usage Page (Keyboard)              56
+    0x19, 0x00,                    #  Usage Minimum (0)                  58
+    0x29, 0x6d,                    #  Usage Maximum (109)                60
+    0x81, 0x00,                    #  Input (Data,Arr,Abs)               62
+    0xc0,                          # End Collection                      64
+    0x05, 0x0c,                    # Usage Page (Consumer Devices)       65
+    0x09, 0x01,                    # Usage (Consumer Control)            67
+    0xa1, 0x01,                    # Collection (Application)            69
+    0x85, 0x02,                    #  Report ID (2)                      71
+    0x05, 0x0c,                    #  Usage Page (Consumer Devices)      73
+    0x15, 0x00,                    #  Logical Minimum (0)                75
+    0x25, 0x01,                    #  Logical Maximum (1)                77
+    0x75, 0x01,                    #  Report Size (1)                    79
+    0x95, 0x07,                    #  Report Count (7)                   81
+    0x09, 0xb5,                    #  Usage (Scan Next Track)            83
+    0x09, 0xb6,                    #  Usage (Scan Previous Track)        85
+    0x09, 0xb7,                    #  Usage (Stop)                       87
+    0x09, 0xcd,                    #  Usage (Play/Pause)                 89
+    0x09, 0xe2,                    #  Usage (Mute)                       91
+    0x09, 0xe9,                    #  Usage (Volume Up)                  93
+    0x09, 0xea,                    #  Usage (Volume Down)                95
+    0x81, 0x02,                    #  Input (Data,Var,Abs)               97
+    0x95, 0x01,                    #  Report Count (1)                   99
+    0x81, 0x01,                    #  Input (Cnst,Arr,Abs)               101
+    0xc0,                          # End Collection                      103
+    0x05, 0x01,                    # Usage Page (Generic Desktop)        104
+    0x09, 0x02,                    # Usage (Mouse)                       106
+    0xa1, 0x01,                    # Collection (Application)            108
+    0x09, 0x01,                    #  Usage (Pointer)                    110
+    0xa1, 0x00,                    #  Collection (Physical)              112
+    0x85, 0x03,                    #   Report ID (3)                     114
+    0x05, 0x09,                    #   Usage Page (Button)               116
+    0x19, 0x01,                    #   Usage Minimum (1)                 118
+    0x29, 0x08,                    #   Usage Maximum (8)                 120
+    0x15, 0x00,                    #   Logical Minimum (0)               122
+    0x25, 0x01,                    #   Logical Maximum (1)               124
+    0x95, 0x08,                    #   Report Count (8)                  126
+    0x75, 0x01,                    #   Report Size (1)                   128
+    0x81, 0x02,                    #   Input (Data,Var,Abs)              130
+    0x95, 0x00,                    #   Report Count (0)                  132
+    0x81, 0x03,                    #   Input (Cnst,Var,Abs)              134
+    0x06, 0x00, 0xff,              #   Usage Page (Vendor Defined Page 1) 136
+    0x09, 0x40,                    #   Usage (Vendor Usage 0x40)         139
+    0x95, 0x02,                    #   Report Count (2)                  141
+    0x75, 0x08,                    #   Report Size (8)                   143
+    0x15, 0x81,                    #   Logical Minimum (-127)            145
+    0x25, 0x7f,                    #   Logical Maximum (127)             147
+    0x81, 0x02,                    #   Input (Data,Var,Abs)              149
+    0x05, 0x01,                    #   Usage Page (Generic Desktop)      151
+    0x09, 0x38,                    #   Usage (Wheel)                     153
+    0x15, 0x81,                    #   Logical Minimum (-127)            155
+    0x25, 0x7f,                    #   Logical Maximum (127)             157
+    0x75, 0x08,                    #   Report Size (8)                   159
+    0x95, 0x01,                    #   Report Count (1)                  161
+    0x81, 0x06,                    #   Input (Data,Var,Rel)              163
+    0x09, 0x30,                    #   Usage (X)                         165
+    0x09, 0x31,                    #   Usage (Y)                         167
+    0x16, 0x01, 0xf8,              #   Logical Minimum (-2047)           169
+    0x26, 0xff, 0x07,              #   Logical Maximum (2047)            172
+    0x75, 0x0c,                    #   Report Size (12)                  175
+    0x95, 0x02,                    #   Report Count (2)                  177
+    0x81, 0x06,                    #   Input (Data,Var,Rel)              179
+    0xc0,                          #  End Collection                     181
+    0xc0,                          # End Collection                      182
+]
+
+

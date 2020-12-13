@@ -61,7 +61,7 @@ def generator(data):
         devid = extract_device_id(d)
         config = data.get(devid, {})
         name = config.get('name') or d.get('ID_MODEL') or d.get('DEVPATH')
-        print(path, devid, device)
+        # print(path, devid, device)
 
 
         args = {

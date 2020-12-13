@@ -53,7 +53,7 @@ import time
 
 from bluetooth import BluetoothSocket, L2CAP
 from struct import pack
-from .constants import KEYBOARD_DESCRIPTOR, MOUSE_DESCRIPTOR, DESCRIPTOR
+from .constants import *
 
 # sleep time after Bluetooth command line tools
 OS_CMD_SLEEP = 1.5
@@ -261,7 +261,8 @@ class BTKbDevice():
 
         # setup profile options
         service_record = self.read_sdp_service_record(path)
-        descriptor = DESCRIPTOR
+        # descriptor = KEYBOARD_DESCRIPTOR
+        descriptor = DESCRIPTOR_3
         descriptor = "".join(["%02X" % x for x in descriptor])
         print(descriptor)
         opts = {
