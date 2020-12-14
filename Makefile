@@ -17,7 +17,7 @@ start:
 start_bluetooth:
 	sudo systemctl stop bluetooth
 	sudo pulseaudio -k || true
-	sudo bluetoothd --compat -n -d -p input
+	sudo bluetoothd --compat -n -d -P input
 
 up:
 	sudo bash ./up.sh

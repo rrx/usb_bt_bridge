@@ -13,14 +13,21 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
-from gi.repository import GObject
+import time
+import traceback
+
+# from gi.repository import GObject
+from gi.repository import GLib
 from optparse import OptionParser
+import logging
+
+
+log = logging.getLogger(__name__)
 
 BUS_NAME = 'org.bluez'
 AGENT_INTERFACE = 'org.bluez.Agent1'
 AGENT_PATH = "/test/agent"
 
-bus = None
 device_obj = None
 dev_path = None
 
@@ -33,10 +40,11 @@ def ask(prompt):
 
 
 def set_trusted(path):
+    bus = dbus.SystemBus()
     props = dbus.Interface(bus.get_object("org.bluez", path),
             "org.freedesktop.DBus.Properties")
     props.Set("org.bluez.Device1", "Trusted", True)
-
+    log.info('trusted %s', path)
 
 def dev_connect(path):
     dev = dbus.Interface(bus.get_object("org.bluez", path),
@@ -51,18 +59,22 @@ class Rejected(dbus.DBusException):
 class Agent(dbus.service.Object):
     exit_on_release = True
 
+    def __init__(self, bus, path, mainloop):
+        dbus.service.Object.__init__(self, bus, path)
+        self.loop = mainloop
+
     def set_exit_on_release(self, exit_on_release):
             self.exit_on_release = exit_on_release
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="", out_signature="")
     def Release(self):
-        print("Release")
+        log.info("Release")
         if self.exit_on_release:
-            mainloop.quit()
+            self.loop.quit()
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="os", out_signature="")
     def AuthorizeService(self, device, uuid):
-        print("AuthorizeService ({}, {})".format(device, uuid))
+        log.info("AuthorizeService ({}, {})".format(device, uuid))
         authorize = ask("Authorize connection (yes/no): ")
         if (authorize == "yes"):
             return
@@ -70,29 +82,29 @@ class Agent(dbus.service.Object):
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="s")
     def RequestPinCode(self, device):
-        print("RequestPinCode ({})".format(device))
+        log.info("RequestPinCode ({})".format(device))
         set_trusted(device)
         return ask("Enter PIN Code: ")
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="u")
     def RequestPasskey(self, device):
-        print("RequestPasskey ({})".format(device))
+        log.info("RequestPasskey ({})".format(device))
         set_trusted(device)
         passkey = ask("Enter passkey: ")
         return dbus.UInt32(passkey)
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="ouq", out_signature="")
     def DisplayPasskey(self, device, passkey, entered):
-        print("DisplayPasskey ({}, {:06u} entered {:u})".
+        log.info("DisplayPasskey ({}, {:06u} entered {:u})".
               format(device, passkey, entered))
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="os", out_signature="")
     def DisplayPinCode(self, device, pincode):
-        print("DisplayPinCode ({}, {})".format(device, pincode))
+        log.info("DisplayPinCode ({}, {})".format(device, pincode))
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="ou", out_signature="")
     def RequestConfirmation(self, device, passkey):
-        print("RequestConfirmation ({}, {:06d}".format(device, passkey))
+        log.info("RequestConfirmation ({}, {:06d}".format(device, passkey))
         # confirm = ask("Confirm passkey (yes/no): ")
         set_trusted(device)
         return
@@ -104,7 +116,7 @@ class Agent(dbus.service.Object):
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="o", out_signature="")
     def RequestAuthorization(self, device):
-        print("RequestAuthorization ({})".format(device))
+        log.info("RequestAuthorization ({})".format(device))
         auth = ask("Authorize? (yes/no): ")
         if (auth == "yes"):
             return
@@ -112,43 +124,69 @@ class Agent(dbus.service.Object):
 
     @dbus.service.method(AGENT_INTERFACE, in_signature="", out_signature="")
     def Cancel(self):
-        print("Cancel")
+        log.info("Cancel")
 
 
 def pair_reply():
-    print("Device paired")
+    log.info("Device paired")
     set_trusted(dev_path)
     dev_connect(dev_path)
-    mainloop.quit()
 
 
 def pair_error(error):
     err_name = error.get_dbus_name()
     if err_name == "org.freedesktop.DBus.Error.NoReply" and device_obj:
-        print("Timed out. Cancelling pairing")
+        log.info("Timed out. Cancelling pairing")
         device_obj.CancelPairing()
     else:
-        print("Creating device failed: {}".format(error))
+        log.info("Creating device failed: {}".format(error))
 
-    mainloop.quit()
+
+def register_agent(bus, path):
+    obj = bus.get_object(BUS_NAME, "/org/bluez")
+    manager = dbus.Interface(obj, "org.bluez.AgentManager1")
+    try:
+        manager.UnregisterAgent(path)
+    except dbus.DBusException as e:
+        log.error(e)
+
+    capability = "KeyboardDisplay"
+    manager.RegisterAgent(path, capability)
+
+    log.info("[*] Agent registered")
+    manager.RequestDefaultAgent(path)
+
+
+def event_loop(mainloop, bus, path):
+    agent = Agent(bus, path, mainloop)
+
+    while True:
+        try:
+            register_agent(bus, path)
+            mainloop.run()
+            log.info("loop exit, restarting")
+        except KeyboardInterrupt:
+            log.info("Agent Interrupt")
+            break
+        except:
+            traceback.print_exc()
+
+        log.info("restart")
+        time.sleep(1)
+
+    log.info("Agent Exit")
+
+
+def main():
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    dbus.mainloop.glib.threads_init()
+    mainloop = GLib.MainLoop()
+    bus = dbus.SystemBus()
+    path = "/test/agent"
+    event_loop(mainloop, bus, path)
 
 
 if __name__ == '__main__':
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    main()
 
-    bus = dbus.SystemBus()
 
-    capability = "KeyboardDisplay"
-
-    path = "/test/agent"
-    agent = Agent(bus, path)
-
-    mainloop = GObject.MainLoop()
-
-    obj = bus.get_object(BUS_NAME, "/org/bluez")
-    manager = dbus.Interface(obj, "org.bluez.AgentManager1")
-    manager.RegisterAgent(path, capability)
-
-    print("[*] Agent registered")
-    manager.RequestDefaultAgent(path)
-    mainloop.run()

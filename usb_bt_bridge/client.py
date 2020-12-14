@@ -5,6 +5,8 @@ https://www.usb.org/sites/default/files/documents/hut1_12v2.pdf
 https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2
 
 """
+import logging
+log = logging.getLogger(__name__)
 
 import dbus
 import dbus.service
@@ -59,9 +61,7 @@ class Keyboard:
     def device_add(self, args, device):
         try:
             dev = InputDevice(device.device_node)
-            # print(dev.capabilities(verbose=True))
-            # print(dev.capabilities())
-            print(dev)
+            log.info(dev)
             self.selector.register(dev, selectors.EVENT_READ)
         except:# RuntimeException as e:
             import traceback
@@ -70,7 +70,6 @@ class Keyboard:
     def device_remove(self, args, device):
         try:
             dev = InputDevice(device.device_node)
-            # print(dev)
             self.selector.unregister(dev)
         except:
             import traceback
@@ -79,7 +78,7 @@ class Keyboard:
     def change_state(self, keydata, keypress=True):
         """Change keyboard state"""
 
-        print("key count {}".format(self.pressed_key_count))
+        log.info("key count {}".format(self.pressed_key_count))
 
         if keypress:
             if keydata[0] != MODIFIER_NONE and keydata[1] != KEY_NONE:
@@ -92,7 +91,7 @@ class Keyboard:
 
                     # set key
                     self.state[4 + i] = keydata[1]
-                    print("Key press {}".format(keydata[1]))
+                    log.info("Key press {}".format(keydata[1]))
 
                 self.state[2] = keydata[0]
 
@@ -107,14 +106,14 @@ class Keyboard:
 
                     # set key
                     self.state[4 + i] = keydata[1]
-                    print("Key press {}".format(keydata[1]))
+                    log.info("Key press {}".format(keydata[1]))
 
             elif keydata[0] != MODIFIER_NONE and keydata[1] == KEY_NONE:
                 # process modifier keys
-                print("{} pressed".format(keydata[0]))
+                log.info("{} pressed".format(keydata[0]))
 
                 self.state[2] |= keydata[0]
-                print("Modify modifier byte {}".format(self.state[2]))
+                log.info("Modify modifier byte {}".format(self.state[2]))
 
             elif keydata[2] != 0:
                 self.mouse_buttons |= keydata[2]
@@ -125,14 +124,14 @@ class Keyboard:
             if keydata[1] != KEY_NONE:
                 # decrease keypress count
                 self.pressed_key_count -= 1
-                print("Key release {}".format(keydata[1]))
+                log.info("Key release {}".format(keydata[1]))
 
                 # update state
                 i = self.state[4:].index(keydata[1])
                 self.state[4 + i] = 0
 
             if keydata[0] != MODIFIER_NONE:
-                print("{} released".format(keydata[0]))
+                log.info("{} released".format(keydata[0]))
                 self.state[2] &= ~keydata[0]
 
             elif keydata[2] != 0:
@@ -141,7 +140,6 @@ class Keyboard:
                 return
 
 
-        # print(self)
         modifier_byte = self.state[2]
         self.service.send_keys(modifier_byte, self.state[4:10])
 
@@ -167,9 +165,9 @@ class Keyboard:
                     device = key.fileobj
                     for event in device.read():
                         if event.type == ecodes.EV_KEY:
-                            print('E', event.type, event.value, event.code, "0x%02x" % event.code)
+                            # print('E', event.type, event.value, event.code, "0x%02x" % event.code)
                             ce = evdev.util.categorize(event)
-                            print(ce.scancode, ce.keystate, ce.keycode)
+                            # print(ce.scancode, ce.keystate, ce.keycode)
 
                             key = key_from_event(ce)
                             if event.value == 0:
@@ -177,7 +175,7 @@ class Keyboard:
                             elif event.value == 1:
                                 self.on_press(key)
                         elif event.type == ecodes.EV_REL:
-                            print('E', event.type, event.value, event.code, "0x%02x" % event.code)
+                            # print('E', event.type, event.value, event.code, "0x%02x" % event.code)
                             if event.code == 0:
                                 # rel_x
                                 self.on_move(event.value, 0, 0)
@@ -189,7 +187,7 @@ class Keyboard:
                                 self.on_move(0,0,event.value)
 
                         else:
-                            print("X", event)
+                            log.debug("Unhandled %s", event)
 
         except KeyboardInterrupt:
             pass
@@ -227,20 +225,12 @@ def key_from_event(e):
 
     v = LOOKUP.get(k)
     if v:
-        print('lookup', k, v)
         return [MODIFIER_NONE, v, 0]
 
     v = mouse_mapping.get(k)
     if v:
         return [MODIFIER_NONE, KEY_NONE, v]
 
-    print("*** Missing", e)
+    log.debug("*** Missing %s", e)
     return [MODIFIER_NONE, KEY_NONE, 0]
 
-# main
-if __name__ == "__main__":
-    print("[*] Intialize keyboard")
-    kbd = Keyboard()
-
-    print("[*] Start event loop ...")
-    kbd.event_loop()
