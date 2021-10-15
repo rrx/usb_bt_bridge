@@ -3,8 +3,6 @@ import usb
 import pyudev
 import simplejson as json
 import yaml
-import libinput
-from libinput import ContextType
 
 log = logging.getLogger(__name__)
 

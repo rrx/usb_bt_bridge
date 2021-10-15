@@ -33,6 +33,12 @@ LE_ADVERTISEMENT_IFACE = "org.bluez.LEAdvertisement1"
 BLUEZ_SERVICE_NAME = "org.bluez"
 GATT_MANAGER_IFACE = "org.bluez.GattManager1"
 
+
+def write_report(report):
+    with open('/dev/hidg0', 'rb+') as fd:
+        fd.write(report)#.encode())
+
+
 def find_adapter(bus):
     """
     Returns the first object that the bluez service has that has a GattManager1 interface
@@ -220,6 +226,9 @@ class BTKbDevice():
     def send_string(self, message):
         """Send a string to the host machine"""
 
+        log.info("M: %s", str(message[2:]))
+        write_report(message[2:])
+        
         if len(self.connections) == 0:
             log.info("Not connected")
             return

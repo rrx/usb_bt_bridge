@@ -1,0 +1,13 @@
+# /usr/lib/systemd/system/usbproxygadget.service
+ 
+[Unit]
+Description=USB Proxy Gadget
+After=systemd-modules-load.service
+ 
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/usbproxygadget
+ 
+[Install]
+WantedBy=sysinit.target
