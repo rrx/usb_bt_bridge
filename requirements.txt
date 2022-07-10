@@ -1,0 +1,6 @@
+pybluez
+evdev
+dbus-python
+pygobject
+
+
